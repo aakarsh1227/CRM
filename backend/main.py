@@ -139,10 +139,12 @@ def suggest_next_action(summary_text: str) -> str:
 # 3. LLM & LANGGRAPH AGENT SETUP
 # ==========================================
 # Ensure GROQ_API_KEY is set in your environment variables
-llm = ChatGroq(model="gemma2-9b-it", temperature=0.1)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
 tools = [log_interaction, edit_interaction, search_hcp, get_interaction_history, suggest_next_action]
 
 # Create the compiled LangGraph execution graph natively
+# Old: agent_executor = create_react_agent(llm, tools)
+# New:
 agent_executor = create_react_agent(llm, tools)
 
 # ==========================================
