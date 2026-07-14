@@ -135,6 +135,10 @@ def suggest_next_action(summary_text: str) -> str:
 # 3. LLM & LANGGRAPH AGENT SETUP
 # ==========================================
 # Ensure GROQ_API_KEY is set in your environment variables
+# ==========================================
+# 3. LLM & LANGGRAPH AGENT SETUP
+# ==========================================
+# Ensure GROQ_API_KEY is set in your environment variables
 llm = ChatGroq(model="gemma2-9b-it", temperature=0.1)
 tools = [log_interaction, edit_interaction, search_hcp, get_interaction_history, suggest_next_action]
 
@@ -155,6 +159,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Chat Input Endpoint ---
 class ChatRequest(BaseModel):
     message: str
 
@@ -168,6 +173,43 @@ async def handle_chat(payload: ChatRequest):
         return {"response": final_msg}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- ADD HERE: Structured Form Input Endpoint ---
+class StructuredLogRequest(BaseModel):
+    hcp_name: str
+    interaction_date: str
+    discussion_topics: Optional[str] = ""
+    next_steps: Optional[str] = ""
+    summary: Optional[str] = ""
+
+@app.post("/api/log-structured")
+async def handle_structured_log(payload: StructuredLogRequest):
+    try:
+        db = SessionLocal()
+        new_log = InteractionModel(
+            hcp_name=payload.hcp_name,
+            interaction_date=date.fromisoformat(payload.interaction_date),
+            discussion_topics=payload.discussion_topics,
+            next_steps=payload.next_steps,
+            summary=payload.summary
+        )
+        db.add(new_log)
+        db.commit()
+        db.refresh(new_log)
+        return {
+            "status": "success", 
+            "message": f"Form interaction logged successfully with ID {new_log.id}.",
+            "id": new_log.id
+        }
+    except Exception as e:
+        if 'db' in locals():
+            db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'db' in locals():
+            db.close()
+
 
 if __name__ == "__main__":
     import uvicorn
